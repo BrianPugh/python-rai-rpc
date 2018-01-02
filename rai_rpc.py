@@ -3,6 +3,8 @@ import json
 from configparser import ConfigParser
 from pprint import pprint
 
+import ipdb as pdb
+
 # TODO: Error handling
 
 class Rai_node:
@@ -10,11 +12,11 @@ class Rai_node:
         self.uri = uri
         self.password = password
 
-    def _bool_to_str(boolean):
+    def _bool_to_str(self, boolean):
         ''' transforms a boolean into a true/false string '''
         return "true" if boolean else "false"
 
-    def _to_list(x):
+    def _to_list(self, x):
         ''' Converts x into a list if it isn't already '''
         if isinstance(x, str):
             x = [x,]
@@ -486,7 +488,7 @@ class Rai_node:
         "count":"%d"
         }''' % (account, count)
         res = self.send_rpc_request(request)
-        return res['frontiers']
+        return res['frontiers'][account]
 
     def frontier_count(self):
         '''
@@ -635,26 +637,54 @@ class Rai_node:
         # TODO: This is all just placeholders
         block_type = contents['type'].lower()
         if block_type == 'open':
-            pass
+            request='''{
+            "action":"block_create",
+            "type":"open",
+            "key":"%s",
+            "account":"%s",
+            "representative":"%s",
+            "source":"%s"
+            }''' % (
+                    contents['key'],
+                    contents['account'],
+                    contents['representative'],
+                    contents['source'])
         elif block_type == 'change':
-            pass
+            request='''{
+            "action":"block_create",
+            "type":"change",
+            "wallet":"%s",
+            "account":"%s",
+            "representative":"%s",
+            "previous":"%s"
+            }''' % (
+                    contents['wallet'],
+                    contents['account'],
+                    contents['representative'],
+                    contents['previous'])
         elif block_type == 'send':
-            pass
-        elif block_type == 'change':
+            request='''{
+            "action":"block_create",
+            "type":"send",
+            "wallet":"%s",
+            "account":"%s",
+            "destination":"%s",
+            "balance":"%s",
+            "amount":"%d",
+            "previous":"%s"
+            }''' % (
+                    contents['wallet'],
+                    contents['account'],
+                    contents['destination'],
+                    contents['balance'],
+                    contents['amount'],
+                    contents['previous'])
+        elif block_type == 'receive':
             pass
         else:
             pass #error
-        request='''{
-        "action":"block_create",
-        "type":"%s",
-        "account":"%s",
-        "count":"%d",
-        "representative":"true",
-        "weight":"true",
-        "pending":"true"
-        }''' % (account, count)
         res = self.send_rpc_request(request)
-        return res['accounts']
+        return res
 
     def payment_begin(self, wallet):
         '''
@@ -719,8 +749,6 @@ class Rai_node:
         'unchecked'    int
         '''
 
-
-
     def get_work_generate(hash):
         '''
         Computes the PoW for a given hash
@@ -747,6 +775,50 @@ class Rai_node:
 
         return send_rpc_request(request)
 
+    def receive(self, wallet, account, block):
+        request='''{
+        "action":"receive",
+        "wallet":"%s",
+        "account":"%s",
+        "block":"%s"
+        }''' % (wallet, account, block)
+
+        res = self.send_rpc_request(request)
+        return res['block']
+
+    def pending(self, account, count=1):
+        request='''{
+        "action":"pending",
+        "account":"%s",
+        "count":"%d"
+        }''' % (account, count)
+
+        res = self.send_rpc_request(request)
+        if count==1:
+            return res['blocks'][0]
+        else:
+            return res['blocks']
+
+    def process(self, block):
+        if isinstance(block, str):
+            # convert string block to a dictionary
+            block = json.loads(block)
+        block = json.dumps(block)
+        block = block.replace('"','\\"')
+        request='''{
+        "action":"process",
+        "block":"%s"
+        }''' % block
+        res = self.send_rpc_request(request)
+        return res['hash']
+
+    def republish(self, hash):
+        request='''{
+        "action":"republish",
+        "hash":"%s"
+        }''' % hash
+        res = self.send_rpc_request(request)
+        return res['blocks']
 
 if __name__=="__main__":
     '''
