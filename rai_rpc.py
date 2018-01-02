@@ -1,9 +1,6 @@
 import requests
 import json
-from configparser import ConfigParser
 from pprint import pprint
-
-import ipdb as pdb
 
 # TODO: Error handling
 
